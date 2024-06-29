@@ -86,6 +86,16 @@ module.exports = {
           },
           key: 'id'
         }
+      },
+      // SOLUCIÓN
+      averagePrices: {
+        type: Sequelize.DOUBLE,
+        defaultValue: 0.0
+      },
+      // SOLUCIÓN
+      isEconomic: {
+        type: Sequelize.BOOLEAN,
+        defaultValue: false
       }
     })
   },

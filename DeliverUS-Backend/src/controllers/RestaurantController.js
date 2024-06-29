@@ -1,4 +1,5 @@
 import { Restaurant, Product, RestaurantCategory, ProductCategory } from '../models/models.js'
+import Sequelize from 'sequelize'
 
 const index = async function (req, res) {
   try {
@@ -39,6 +40,7 @@ const indexOwner = async function (req, res) {
 const create = async function (req, res) {
   const newRestaurant = Restaurant.build(req.body)
   newRestaurant.userId = req.user.id // usuario actualmente autenticado
+  await calcularMedia(newRestaurant.id)
   try {
     const restaurant = await newRestaurant.save()
     res.json(restaurant)
@@ -73,6 +75,7 @@ const show = async function (req, res) {
 const update = async function (req, res) {
   try {
     await Restaurant.update(req.body, { where: { id: req.params.restaurantId } })
+    await calcularMedia(req.params.restaurantId)
     const updatedRestaurant = await Restaurant.findByPk(req.params.restaurantId)
     res.json(updatedRestaurant)
   } catch (err) {
@@ -95,12 +98,42 @@ const destroy = async function (req, res) {
   }
 }
 
+// SOLUCIÓN
+const calcularMedia = async function (Idrestaurant) {
+  const restaurant = await Restaurant.findByPk(Idrestaurant)
+  const products = await Product.findAll({ where: { restaurantId: restaurant.id } })
+  if (products !== null) {
+    const mediaRestaurante = await Product.findOne({
+      where: {
+        restaurantId: { [Sequelize.Op.eq]: restaurant.id }
+      },
+      attributes: [
+        [Sequelize.fn('AVG', Sequelize.col('price')), 'avgPrices']
+      ]
+    })
+    const mediaRestaurantes = await Product.findOne({
+      where: {
+        restaurantId: { [Sequelize.Op.ne]: restaurant.id }
+      },
+      attributes: [
+        [Sequelize.fn('AVG', Sequelize.col('price')), 'avgPrices']
+      ]
+    })
+    const miMedia = mediaRestaurante.dataValues.avgPrices
+    const media = mediaRestaurantes.dataValues.avgPrices
+    if (miMedia < media) {
+      await Restaurant.update({ isEconomic: true }, { where: { id: restaurant.id } })
+    }
+  }
+}
+
 const RestaurantController = {
   index,
   indexOwner,
   create,
   show,
   update,
-  destroy
+  destroy,
+  calcularMedia
 }
 export default RestaurantController
